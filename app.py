@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+import http.server
+import webbrowser
+import threading
+import os
+
+PORT = 8080
+
+HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynatrace RUM Test</title>
+    <script type="text/javascript" src="https://js-cdn.dynatracelabs.com/jstag/1468ae7109d/bf96366zqj/7e744d5a6550af2_complete.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #0078d4;
+            color: white;
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #106ebe;
+        }
+        .log {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dynatrace RUM Test</h1>
+        <p>Use the buttons below to test Dynatrace dtrumAPI and manual RUM injection.</p>
+        
+        <button onclick="testUserAction()">Test User Action</button>
+        <button onclick="testCustomEvent()">Test Custom Event</button>
+        <button onclick="testXHRRequest()">Test XHR Request</button>
+        <button onclick="testError()">Test Error</button>
+        <button onclick="checkDtrum()">Check dtrumAPI</button>
+        <button onclick="clearLog()">Clear Log</button>
+        
+        <div class="log" id="log">Ready for testing...</div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function checkDtrum() {
+            if (window.dtrum) {
+                log('✓ dtrumAPI available');
+                log('Methods: ' + Object.keys(window.dtrum).join(', '));
+            } else {
+                log('✗ dtrumAPI not found');
+            }
+        }
+
+        function testUserAction() {
+            log('Triggering user action...');
+            if (window.dtrum && window.dtrum.reportUserAction) {
+                window.dtrum.reportUserAction('TestUserAction', 'click');
+                log('User action reported');
+            } else {
+                log('User action API not available');
+            }
+        }
+
+        function testCustomEvent() {
+            log('Creating custom event...');
+            if (window.dtrum && window.dtrum.reportEvent) {
+                window.dtrum.reportEvent('CustomTestEvent', { testData: 'value123' });
+                log('Custom event reported');
+            } else {
+                log('Event API not available');
+            }
+        }
+
+        function testXHRRequest() {
+            log('Making XHR request...');
+            fetch('https://api.github.com')
+                .then(response => {
+                    log('Request completed: ' + response.status);
+                })
+                .catch(error => {
+                    log('Request error: ' + error.message);
+                });
+        }
+
+        function testError() {
+            log('Creating test error...');
+            try {
+                throw new Error('Intentional RUM test error');
+            } catch (e) {
+                if (window.dtrum && window.dtrum.reportError) {
+                    window.dtrum.reportError(e);
+                    log('Error reported: ' + e.message);
+                } else {
+                    log('Error without API: ' + e.message);
+                }
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = 'Log cleared...';
+        }
+
+        // Check API on load
+        window.addEventListener('load', checkDtrum);
+    </script>
+</body>
+</html>"""
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(HTML.encode("utf-8"))
+
+    def log_message(self, format, *args):
+        pass  # silence request logs
+
+
+def open_browser():
+    webbrowser.open(f"http://localhost:{PORT}")
+
+
+if __name__ == "__main__":
+    server = http.server.HTTPServer(("localhost", PORT), Handler)
+    print(f"Serving at http://localhost:{PORT}  (Ctrl+C to stop)")
+    threading.Timer(0.5, open_browser).start()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServer stopped.")
