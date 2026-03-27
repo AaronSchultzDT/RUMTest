@@ -1,10 +1,7 @@
-#!/usr/bin/env python3
-import http.server
-import webbrowser
-import threading
-import os
+import streamlit as st
+import streamlit.components.v1 as components
 
-PORT = 8080
+st.set_page_config(page_title="Dynatrace RUM Test", layout="centered")
 
 HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -142,27 +139,4 @@ HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(HTML.encode("utf-8"))
-
-    def log_message(self, format, *args):
-        pass  # silence request logs
-
-
-def open_browser():
-    webbrowser.open(f"http://localhost:{PORT}")
-
-
-if __name__ == "__main__":
-    server = http.server.HTTPServer(("localhost", PORT), Handler)
-    print(f"Serving at http://localhost:{PORT}  (Ctrl+C to stop)")
-    threading.Timer(0.5, open_browser).start()
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\nServer stopped.")
+components.html(HTML, height=600, scrolling=True)
